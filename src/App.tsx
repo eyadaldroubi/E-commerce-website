@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useCallback, useEffect, Component } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, 
   Search, 
@@ -49,7 +49,27 @@ import {
   ShieldCheck,
   UserCircle,
   Moon,
-  Sun
+  Sun,
+  Tv,
+  Cpu,
+  Laptop,
+  Headphones,
+  Watch,
+  Speaker,
+  Cable,
+  Camera,
+  Baby,
+  Briefcase,
+  Footprints,
+  Dumbbell,
+  Bed,
+  Archive,
+  Sofa,
+  Microwave,
+  Recycle,
+  Palette,
+  BrushCleaning,
+  Bug
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -75,7 +95,7 @@ import AdminPanel from './components/AdminPanel';
 import AuthView from './components/AuthView';
 import ProfileView from './components/ProfileView';
 
-class ErrorBoundary extends Component<any, any> {
+class ErrorBoundary extends React.Component<any, any> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false };
@@ -120,6 +140,28 @@ const iconMap: Record<string, React.ReactNode> = {
   Shirt: <Shirt className="w-4 h-4" />,
   Home: <Home className="w-4 h-4" />,
   Sparkles: <Sparkles className="w-4 h-4" />,
+  Tv: <Tv className="w-4 h-4" />,
+  Cpu: <Cpu className="w-4 h-4" />,
+  Laptop: <Laptop className="w-4 h-4" />,
+  Headphones: <Headphones className="w-4 h-4" />,
+  Watch: <Watch className="w-4 h-4" />,
+  Speaker: <Speaker className="w-4 h-4" />,
+  Cable: <Cable className="w-4 h-4" />,
+  Printer: <Printer className="w-4 h-4" />,
+  Camera: <Camera className="w-4 h-4" />,
+  User: <UserIcon className="w-4 h-4" />,
+  Baby: <Baby className="w-4 h-4" />,
+  Briefcase: <Briefcase className="w-4 h-4" />,
+  Footprints: <Footprints className="w-4 h-4" />,
+  Dumbbell: <Dumbbell className="w-4 h-4" />,
+  Bed: <Bed className="w-4 h-4" />,
+  Archive: <Archive className="w-4 h-4" />,
+  Sofa: <Sofa className="w-4 h-4" />,
+  Microwave: <Microwave className="w-4 h-4" />,
+  Recycle: <Recycle className="w-4 h-4" />,
+  Palette: <Palette className="w-4 h-4" />,
+  BrushCleaning: <BrushCleaning className="w-4 h-4" />,
+  Bug: <Bug className="w-4 h-4" />,
 };
 
 const ProductGallery: React.FC<{ images: string[] }> = ({ images }) => {
@@ -212,7 +254,7 @@ function App() {
     return (saved as any) || 'shop';
   });
   const [adminSubView, setAdminSubView] = useState<'products' | 'orders' | 'vendors' | 'customers' | 'reports' | 'hero'>('products');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [minRating, setMinRating] = useState(0);
   
   // Auth State
@@ -229,6 +271,99 @@ function App() {
   const [authError, setAuthError] = useState('');
 
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  // WebSocket Logic
+  const wsRef = useRef<WebSocket | null>(null);
+  const isRemoteUpdate = useRef(false);
+
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+      console.log('Connected to real-time server');
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        isRemoteUpdate.current = true;
+        
+        switch (message.type) {
+          case 'UPDATE_PRODUCTS':
+            setProducts(message.data);
+            break;
+          case 'UPDATE_ORDERS':
+            setOrders(message.data);
+            break;
+          case 'UPDATE_VENDORS':
+            setVendors(message.data);
+            break;
+          case 'UPDATE_CUSTOMERS':
+            setCustomers(message.data);
+            break;
+          case 'UPDATE_HERO_IMAGES':
+            setHeroImages(message.data);
+            break;
+        }
+        
+        setTimeout(() => {
+          isRemoteUpdate.current = false;
+        }, 100);
+      } catch (err) {
+        console.error('Error handling real-time update:', err);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log('Disconnected from real-time server. Retrying...');
+      // Simple retry logic could go here
+    };
+
+    wsRef.current = socket;
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  const broadcastUpdate = useCallback((type: string, data: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && !isRemoteUpdate.current) {
+      wsRef.current.send(JSON.stringify({ type, data }));
+    }
+  }, []);
+
+  // Broadcast changes when state updates (if not from remote)
+  useEffect(() => {
+    if (!isRemoteUpdate.current && currentUser) {
+      broadcastUpdate('UPDATE_PRODUCTS', products);
+    }
+  }, [products, broadcastUpdate, currentUser]);
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && currentUser?.role === 'admin') {
+      broadcastUpdate('UPDATE_ORDERS', orders);
+    }
+  }, [orders, broadcastUpdate, currentUser]);
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && currentUser?.role === 'admin') {
+      broadcastUpdate('UPDATE_VENDORS', vendors);
+    }
+  }, [vendors, broadcastUpdate, currentUser]);
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && currentUser?.role === 'admin') {
+      broadcastUpdate('UPDATE_CUSTOMERS', customers);
+    }
+  }, [customers, broadcastUpdate, currentUser]);
+
+  useEffect(() => {
+    if (!isRemoteUpdate.current && currentUser?.role === 'admin') {
+      broadcastUpdate('UPDATE_HERO_IMAGES', heroImages);
+    }
+  }, [heroImages, broadcastUpdate, currentUser]);
 
   // Save users to localStorage
   React.useEffect(() => {
@@ -290,6 +425,24 @@ function App() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
+  const [userRating, setUserRating] = useState<number>(0);
+
+  const handleRateProduct = useCallback((productId: string, rating: number) => {
+    if (!currentUser) return;
+    
+    setProducts(prev => prev.map(p => {
+      if (p.id === productId) {
+        const newReviewsCount = p.reviewsCount + 1;
+        const newRating = ((p.rating * p.reviewsCount) + rating) / newReviewsCount;
+        return { ...p, rating: parseFloat(newRating.toFixed(1)), reviewsCount: newReviewsCount };
+      }
+      return p;
+    }));
+    
+    setNotification({ message: 'شكراً لتقييمك!', type: 'success' });
+    setTimeout(() => setNotification(null), 3000);
+    setUserRating(0);
+  }, [currentUser]);
 
   const [newProduct, setNewProduct] = useState<Partial<Product>>({
     name: '',
@@ -312,7 +465,8 @@ function App() {
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+      const subCategories = CATEGORIES.filter(c => c.parentId === selectedCategory).map(c => c.id);
+      const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || subCategories.includes(p.category);
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
       const matchesRating = p.rating >= minRating;
@@ -582,7 +736,7 @@ function App() {
     setView('shop');
     setSelectedCategory('all');
     setSearchQuery('');
-    setPriceRange([0, 1000]);
+    setPriceRange([0, 10000]);
     setMinRating(0);
   }, []);
 
@@ -710,23 +864,62 @@ function App() {
               className="space-y-10"
             >
             {/* Category Navigation - Easy & Modern */}
-            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-2">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`category-pill ${selectedCategory === 'all' ? 'category-pill-active' : 'category-pill-inactive'}`}
-              >
-                الكل
-              </button>
-              {CATEGORIES.map(cat => (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-2">
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`category-pill flex items-center gap-2 ${selectedCategory === cat.id ? 'category-pill-active' : 'category-pill-inactive'}`}
+                  onClick={() => setSelectedCategory('all')}
+                  className={`category-pill ${selectedCategory === 'all' ? 'category-pill-active' : 'category-pill-inactive'}`}
                 >
-                  {iconMap[cat.icon]}
-                  {cat.name}
+                  الكل
                 </button>
-              ))}
+                {CATEGORIES.filter(c => !c.parentId).map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`category-pill flex items-center gap-2 ${
+                      selectedCategory === cat.id || CATEGORIES.find(c => c.id === selectedCategory)?.parentId === cat.id 
+                      ? 'category-pill-active' 
+                      : 'category-pill-inactive'
+                    }`}
+                  >
+                    {iconMap[cat.icon]}
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Subcategories */}
+              {(() => {
+                const currentCat = CATEGORIES.find(c => c.id === selectedCategory);
+                const parentId = currentCat?.parentId || (CATEGORIES.some(c => c.parentId === selectedCategory) ? selectedCategory : null);
+                const subCats = CATEGORIES.filter(c => c.parentId === parentId);
+                
+                if (subCats.length > 0) {
+                  return (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 px-2"
+                    >
+                      {subCats.map(sub => (
+                        <button
+                          key={sub.id}
+                          onClick={() => setSelectedCategory(sub.id)}
+                          className={`px-4 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${
+                            selectedCategory === sub.id 
+                            ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200 shadow-sm' 
+                            : 'bg-slate-50 text-slate-500 border-2 border-transparent hover:bg-slate-100'
+                          }`}
+                        >
+                          {iconMap[sub.icon]}
+                          {sub.name}
+                        </button>
+                      ))}
+                    </motion.div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Hero Banner - Simple & Clean */}
@@ -747,16 +940,18 @@ function App() {
                       className="text-sm font-bold bg-transparent border-none focus:ring-0 p-0"
                       onChange={(e) => {
                         const val = e.target.value;
-                        if (val === 'all') setPriceRange([0, 1000]);
+                        if (val === 'all') setPriceRange([0, 10000]);
                         else if (val === 'low') setPriceRange([0, 100]);
                         else if (val === 'mid') setPriceRange([100, 500]);
                         else if (val === 'high') setPriceRange([500, 1000]);
+                        else if (val === 'premium') setPriceRange([1000, 10000]);
                       }}
                     >
                       <option value="all">الكل</option>
                       <option value="low">أقل من $100</option>
                       <option value="mid">$100 - $500</option>
-                      <option value="high">أكثر من $500</option>
+                      <option value="high">$500 - $1000</option>
+                      <option value="premium">أكثر من $1000</option>
                     </select>
                   </div>
                   <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
@@ -1280,8 +1475,10 @@ function App() {
                       value={newProduct.category}
                       onChange={e => setNewProduct({...newProduct, category: e.target.value as any})}
                     >
-                      {CATEGORIES.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      {CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.parentId ? `  -- ${cat.name}` : cat.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1707,9 +1904,33 @@ function App() {
                         <span className="px-3 py-1 bg-blue-50 border border-blue-100 text-indigo-600 text-xs font-bold rounded-full uppercase tracking-wider">
                           {CATEGORIES.find(c => c.id === selectedProductForDetails.category)?.name}
                         </span>
-                        <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
-                          <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                          <span className="text-xs font-bold text-amber-700">{selectedProductForDetails.rating}</span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg">
+                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            <span className="text-xs font-bold text-amber-700">{selectedProductForDetails.rating}</span>
+                          </div>
+                          {currentUser && (
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  onMouseEnter={() => setUserRating(star)}
+                                  onMouseLeave={() => setUserRating(0)}
+                                  onClick={() => handleRateProduct(selectedProductForDetails.id, star)}
+                                  className="p-0.5 transition-transform hover:scale-125"
+                                >
+                                  <Star 
+                                    className={`w-4 h-4 ${
+                                      (userRating || 0) >= star 
+                                        ? 'text-amber-400 fill-amber-400' 
+                                        : 'text-slate-300'
+                                    }`} 
+                                  />
+                                </button>
+                              ))}
+                              <span className="text-[10px] font-bold text-slate-400 mr-1">قيم الآن</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <h2 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight mb-2">

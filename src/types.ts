@@ -17,6 +17,7 @@ export interface Category {
   id: string;
   name: string;
   icon: string;
+  parentId?: string;
 }
 
 export interface CartItem extends Product {
