@@ -1,14 +1,17 @@
 {
-  "name": "react-example",
+  "name": "e-commerce-website",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://eyadaldroubi.github.io/E-commerce-website",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -31,6 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.21",
+    "gh-pages": "^6.3.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
