@@ -70,6 +70,7 @@ interface AdminPanelProps {
   addHeroImage: (image: HeroImage) => void;
   removeHeroImage: (id: string) => void;
   updateHeroImage: (image: HeroImage) => void;
+  inventoryPredictions: any[];
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -106,7 +107,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   heroImages,
   addHeroImage,
   removeHeroImage,
-  updateHeroImage
+  updateHeroImage,
+  inventoryPredictions
 }) => {
   const [isHeroModalOpen, setIsHeroModalOpen] = React.useState(false);
   const [editingHero, setEditingHero] = React.useState<HeroImage | null>(null);
@@ -510,6 +512,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
           </div>
+
+          {/* AI Inventory Predictions */}
+          {inventoryPredictions && inventoryPredictions.length > 0 && (
+            <div className="modern-card p-8 space-y-6">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">توقعات المخزون الذكية</h3>
+                  <p className="text-sm text-slate-500">تحليل الذكاء الاصطناعي لمستويات المخزون واتجاهات المبيعات</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {inventoryPredictions.map((prediction: any, idx: number) => (
+                  <motion.div 
+                    key={prediction.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="p-6 rounded-3xl border border-slate-100 bg-slate-50 space-y-3 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-bold text-slate-900 line-clamp-1">{prediction.name}</h4>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                        prediction.prediction.toLowerCase().includes('run out') || prediction.prediction.toLowerCase().includes('restock') || prediction.prediction.toLowerCase().includes('soon')
+                          ? 'bg-red-100 text-red-700' 
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {prediction.prediction}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {prediction.reason}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

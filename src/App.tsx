@@ -69,7 +69,13 @@ import {
   Recycle,
   Palette,
   BrushCleaning,
-  Bug
+  Bug,
+  Droplets,
+  Leaf,
+  Bath,
+  Wind,
+  Square,
+  FlaskConical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -90,6 +96,7 @@ import { Product, Category, CartItem, Order, Vendor, Customer, User, HeroImage }
 import { INITIAL_PRODUCTS, CATEGORIES, MOCK_ORDERS, MOCK_VENDORS, MOCK_CUSTOMERS } from './constants';
 import ProductCard from './components/ProductCard';
 import HeroCarousel from './components/HeroCarousel';
+import { aiService } from './services/aiService';
 
 import AdminPanel from './components/AdminPanel';
 import AuthView from './components/AuthView';
@@ -162,6 +169,12 @@ const iconMap: Record<string, React.ReactNode> = {
   Palette: <Palette className="w-4 h-4" />,
   BrushCleaning: <BrushCleaning className="w-4 h-4" />,
   Bug: <Bug className="w-4 h-4" />,
+  Droplets: <Droplets className="w-4 h-4" />,
+  Leaf: <Leaf className="w-4 h-4" />,
+  Bath: <Bath className="w-4 h-4" />,
+  Wind: <Wind className="w-4 h-4" />,
+  Square: <Square className="w-4 h-4" />,
+  FlaskConical: <FlaskConical className="w-4 h-4" />,
 };
 
 const ProductGallery: React.FC<{ images: string[] }> = ({ images }) => {
@@ -197,6 +210,125 @@ const ProductGallery: React.FC<{ images: string[] }> = ({ images }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const AIChatBot: React.FC<{ 
+  products: Product[], 
+  isOpen: boolean, 
+  setIsOpen: (open: boolean) => void,
+  messages: any[],
+  setMessages: (msgs: any[]) => void,
+  isLoading: boolean,
+  setIsLoading: (loading: boolean) => void
+}> = ({ products, isOpen, setIsOpen, messages, setMessages, isLoading, setIsLoading }) => {
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+    
+    const userMsg = { role: 'user' as const, parts: [{ text: input }] };
+    setMessages([...messages, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    const response = await aiService.chatWithAssistant(input, products, messages);
+    setMessages([...messages, userMsg, { role: 'model' as const, parts: [{ text: response }] }]);
+    setIsLoading(false);
+  };
+
+  return (
+    <>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50"
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <Activity className="w-6 h-6" />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-24 right-6 w-80 md:w-96 h-[500px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-50"
+          >
+            <div className="bg-indigo-600 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">مساعد BeePharma الذكي</h4>
+                  <p className="text-[10px] opacity-80">متصل الآن - جاهز للمساعدة</p>
+                </div>
+              </div>
+              <button onClick={() => setIsOpen(false)}><X className="w-5 h-5" /></button>
+            </div>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+              {messages.length === 0 && (
+                <div className="text-center space-y-2 py-8">
+                  <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Sparkles className="w-8 h-8" />
+                  </div>
+                  <h5 className="font-bold text-slate-900">مرحباً بك!</h5>
+                  <p className="text-xs text-slate-500">أنا مساعدك الذكي. كيف يمكنني مساعدتك اليوم في اختيار منتجاتنا؟</p>
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-indigo-600 text-white rounded-tr-none' 
+                      : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none'
+                  }`}>
+                    {msg.parts[0].text}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />
+                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-white border-t border-slate-100">
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="اكتب سؤالك هنا..."
+                  className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-600"
+                />
+                <button 
+                  onClick={handleSend}
+                  disabled={isLoading}
+                  className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -271,6 +403,19 @@ function App() {
   const [authError, setAuthError] = useState('');
 
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  // AI State
+  const [viewedProducts, setViewedProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('shop_viewed_products');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [recommendedProductIds, setRecommendedProductIds] = useState<string[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model', parts: { text: string }[] }[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [inventoryPredictions, setInventoryPredictions] = useState<any[]>([]);
+  const [isSmartSearching, setIsSmartSearching] = useState(false);
+  const [smartSearchResultIds, setSmartSearchResultIds] = useState<string[] | null>(null);
 
   // WebSocket Logic
   const wsRef = useRef<WebSocket | null>(null);
@@ -414,6 +559,47 @@ function App() {
   React.useEffect(() => {
     localStorage.setItem('shop_view', view);
   }, [view]);
+
+  // AI Effects
+  useEffect(() => {
+    localStorage.setItem('shop_viewed_products', JSON.stringify(viewedProducts));
+  }, [viewedProducts]);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (viewedProducts.length > 0) {
+        const userOrders = orders.filter(o => o.customerId === currentUser?.email);
+        const ids = await aiService.getRecommendedProducts(viewedProducts, products, userOrders);
+        setRecommendedProductIds(ids);
+      }
+    };
+    fetchRecommendations();
+  }, [viewedProducts, products, orders, currentUser]);
+
+  useEffect(() => {
+    const fetchInventoryPredictions = async () => {
+      if (currentUser?.role === 'admin' && view === 'admin') {
+        const predictions = await aiService.predictInventory(products, orders);
+        setInventoryPredictions(predictions);
+      }
+    };
+    fetchInventoryPredictions();
+  }, [products, orders, currentUser, view]);
+
+  useEffect(() => {
+    const performSmartSearch = async () => {
+      if (searchQuery.trim().length > 2) {
+        setIsSmartSearching(true);
+        const ids = await aiService.smartSearch(searchQuery, products);
+        setSmartSearchResultIds(ids);
+        setIsSmartSearching(false);
+      } else {
+        setSmartSearchResultIds(null);
+      }
+    };
+    const timer = setTimeout(performSmartSearch, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, products]);
   
   // Admin State
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
@@ -424,7 +610,20 @@ function App() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
-  const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
+  const [selectedProductForDetails, _setSelectedProductForDetails] = useState<Product | null>(null);
+  const trackView = useCallback((product: Product) => {
+    setViewedProducts(prev => {
+      const exists = prev.some(p => p.id === product.id);
+      if (exists) return prev;
+      const newViewed = [product, ...prev].slice(0, 10);
+      return newViewed;
+    });
+  }, []);
+
+  const setSelectedProductForDetails = useCallback((product: Product | null) => {
+    if (product) trackView(product);
+    _setSelectedProductForDetails(product);
+  }, [trackView]);
   const [userRating, setUserRating] = useState<number>(0);
 
   const handleRateProduct = useCallback((productId: string, rating: number) => {
@@ -467,12 +666,20 @@ function App() {
     return products.filter(p => {
       const subCategories = CATEGORIES.filter(c => c.parentId === selectedCategory).map(c => c.id);
       const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory || subCategories.includes(p.category);
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Smart search logic
+      let matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (smartSearchResultIds && smartSearchResultIds.length > 0) {
+        matchesSearch = matchesSearch || smartSearchResultIds.includes(p.id);
+      }
+
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
       const matchesRating = p.rating >= minRating;
       return matchesCategory && matchesSearch && matchesPrice && matchesRating;
     });
-  }, [products, selectedCategory, searchQuery, priceRange, minRating]);
+  }, [products, selectedCategory, searchQuery, priceRange, minRating, smartSearchResultIds]);
 
   const addToCart = useCallback((product: Product) => {
     setCart(prev => {
@@ -927,6 +1134,35 @@ function App() {
               <HeroCarousel heroImages={heroImages} />
             )}
 
+            {/* AI Recommendations */}
+            {recommendedProductIds.length > 0 && selectedCategory === 'all' && searchQuery === '' && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">منتجات قد تعجبك</h3>
+                    <p className="text-xs text-slate-500">توصيات ذكية بناءً على اهتماماتك</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {products.filter(p => recommendedProductIds.includes(p.id)).map((product, idx) => (
+                    <ProductCard 
+                      key={`rec-${product.id}`}
+                      product={product}
+                      idx={idx}
+                      categories={CATEGORIES}
+                      onAddToCart={addToCart}
+                      onViewDetails={setSelectedProductForDetails}
+                      isWishlisted={wishlist.some(p => p.id === product.id)}
+                      onToggleWishlist={toggleWishlist}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Product Grid - Clean & Easy */}
             <div id="products-section" className="space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1290,6 +1526,7 @@ function App() {
               addHeroImage={addHeroImage}
               removeHeroImage={removeHeroImage}
               updateHeroImage={updateHeroImage}
+              inventoryPredictions={inventoryPredictions}
             />
           )}
 
@@ -2221,6 +2458,16 @@ function App() {
           </div>
         </div>
       </footer>
+
+      <AIChatBot 
+        products={products}
+        isOpen={isChatOpen}
+        setIsOpen={setIsChatOpen}
+        messages={chatMessages}
+        setMessages={setChatMessages}
+        isLoading={isChatLoading}
+        setIsLoading={setIsChatLoading}
+      />
     </div>
   );
 }
